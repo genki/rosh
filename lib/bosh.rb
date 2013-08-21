@@ -4,19 +4,19 @@ class Bosh
   end
 
   def connect
-    reconnect until @connected = system(["ssh",
+    reconnect until system ["ssh",
       "-o ServerAliveInterval=5", "-o ServerAliveCountMax=1",
       #"-o UserKnownHostsFile=/dev/null", "-o StrictHostKeyChecking=no",
-      @host , '-t', "'screen -rx #{@name}'", '2>/dev/null']*' ') || @connected
+      @host , '-t', "'screen -rx #{@name}'", '2>/dev/null']*' '
   end
 
   def reconnect
-    if @connected
+    if system "ssh #{@host} 'screen -S #{@name} -X echo ok' 2>&1 >/dev/null"
       sleep [@last_try - Time.now + 1, 0].max if @last_try
       puts "reconnecting..."
       @last_try = Time.now
     else
-      puts "creating remote screen session '#{@name}'"
+      puts "creating new screen session #{@name}..."
       system "ssh #{@host} screen -c /dev/null -e '^t^t' -dmS #{@name}" or abort
       system "ssh #{@host} 'screen -S #{@name} -p 0 -X eval " +
           '"stuff STY=\\040screen\\015"' + "'" or abort
