@@ -49,5 +49,7 @@ private
     uri = URI("//#{@host}")
     uri.host = Resolv.getaddress uri.host
     uri.to_s[2..-1]
+  rescue Exception
+    @host
   end
 end
