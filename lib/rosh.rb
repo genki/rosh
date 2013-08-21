@@ -1,4 +1,4 @@
-class Bosh
+class Rosh
   def initialize(host, name = :default)
     @host, @name = host, name
     @first_try = true

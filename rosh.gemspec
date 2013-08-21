@@ -2,7 +2,7 @@
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 Gem::Specification.new do |spec|
-  spec.name          = "bosh"
+  spec.name          = "rosh"
   spec.version       = '0.2.1'
   spec.authors       = ["Genki Takiuchi"]
   spec.email         = ["genki@s21g.com"]
@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
     It can automatically reconnect to the host with the remote GNU screen
     session.
   EOD
-  spec.summary       = %q{Bosh is fake mosh}
+  spec.summary       = %q{Rosh is roaming shell}
   spec.homepage      = ""
   spec.license       = "MIT"
 

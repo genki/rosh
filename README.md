@@ -1,13 +1,13 @@
-# Bosh
+# Rosh
 
-Bosh is fake mosh.
+Rosh is roaming shell.
 It can automatically reconnect to the host with the remote GNU screen session.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'bosh'
+    gem 'rosh'
 
 And then execute:
 
@@ -15,11 +15,11 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install bosh
+    $ gem install rosh
 
 ## Usage
 
-    bosh hostname [GNU_screen_session_name]
+    rosh hostname [GNU_screen_session_name]
 
 ## Contributing
 
