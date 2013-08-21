@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require 'bosh'
+
+Bosh.new(*ARGV).connect
