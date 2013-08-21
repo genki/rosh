@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
     session.
   EOD
   spec.summary       = %q{Rosh is roaming shell}
-  spec.homepage      = ""
+  spec.homepage      = 'https://github.com/genki/rosh'
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
