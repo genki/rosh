@@ -1,25 +1,34 @@
 require 'uri'
 require 'resolv'
 require 'net/ssh/config'
+require 'optparse'
+require File.join(File.dirname(__FILE__), %w[rosh version])
 
 class Rosh
-  def initialize(host, name = :default, *opts)
-    @host, @name = host, name
-    @first_try = true
+  def initialize(*args)
+    @ssh_opts = []
+    alive_interval = 5
+    @escape = '^t'
+    OptionParser.new.tap do |opt|
+      opt.on '-n' do
+        @ssh_opts << '-o UserKnownHostsFile=/dev/null'
+        @ssh_opts << '-o StrictHostKeyChecking=no'
+      end
+      opt.on('-a alive-interval'){|v| alive_interval = v.to_i}
+      opt.on('-e escape'){|v| @escape = v}
+    end.parse! args
+    @host, @name = *args, :default
+    @ssh_opts << "-o ServerAliveInterval=#{alive_interval}"
+    @ssh_opts << "-o ServerAliveCountMax=1"
+
+    # check ~/.ssh/config to resolve alias name
     config = Net::SSH::Config.for(@host)
     @host = config[:host_name] if config[:host_name]
-    @opts = ["-o ServerAliveInterval=5", "-o ServerAliveCountMax=1"]
-    opts.each do |opt|
-      case opt
-      when '-n' 
-        @opts << '-o UserKnownHostsFile=/dev/null'
-        @opts << '-o StrictHostKeyChecking=no'
-      end
-    end
+    @first_try = true
   end
 
   def connect
-    reconnect until system ["ssh", *@opts, resolv,
+    reconnect until system ["ssh", *@ssh_opts, resolv,
       '-t', "'screen -rx #{@name}'", '2>/dev/null']*' '
   end
 
@@ -27,7 +36,7 @@ class Rosh
     if @first_try
       if !sh('-p 0 -X echo ok', '2>&1 >/dev/null')
         print "creating new screen session #{@name}... "
-        if sh '-c /dev/null -e "^t^t" -dm' and
+        if sh %{-c /dev/null -e "#{@escape*2}" -dm} and
           sh '-p 0 -X eval "stuff STY=\\040screen\\015"'
           puts "done."
         else

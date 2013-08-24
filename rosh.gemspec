@@ -1,9 +1,10 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require File.join(lib, %w[rosh version])
 Gem::Specification.new do |spec|
   spec.name          = "rosh"
-  spec.version       = '0.2.5'
+  spec.version       = Rosh::VERSION
   spec.authors       = ["Genki Takiuchi"]
   spec.email         = ["genki@s21g.com"]
   spec.description   = <<-EOD
