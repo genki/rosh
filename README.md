@@ -19,7 +19,11 @@ Or install it yourself as:
 
 ## Usage
 
-    rosh hostname [GNU_screen_session_name]
+    rosh [options] hostname [GNU_screen_session_name]
+
+    -a alive-interval   Set ssh option ServerAliveInterval. Default: 5
+    -e escape           Set the escape charactor of the outer screen session.
+                        Default: "^t"
 
 To detach the outer screen session,
 

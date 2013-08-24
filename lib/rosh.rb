@@ -9,15 +9,13 @@ class Rosh
     @ssh_opts = []
     alive_interval = 5
     @escape = '^t'
-    OptionParser.new.tap do |opt|
-      opt.on '-n' do
-        @ssh_opts << '-o UserKnownHostsFile=/dev/null'
-        @ssh_opts << '-o StrictHostKeyChecking=no'
-      end
+    OptionParser.new("test").tap do |opt|
+      opt.banner = 'Usage: rosh [options] hostname [session-name]'
       opt.on('-a alive-interval'){|v| alive_interval = v.to_i}
       opt.on('-e escape'){|v| @escape = v}
     end.parse! args
     @host, @name = *args, :default
+    abort 'hostname is required' if @host == :default
     @ssh_opts << "-o ServerAliveInterval=#{alive_interval}"
     @ssh_opts << "-o ServerAliveCountMax=1"
 
