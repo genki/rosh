@@ -21,6 +21,17 @@ Or install it yourself as:
 
     rosh hostname [GNU_screen_session_name]
 
+To detach the outer screen session,
+
+    ^t d
+
+To send the command to the inner screen session,
+
+    ^a
+
+Currently it is not configurable, but the source code is very simple
+to be customizable.
+
 ## Contributing
 
 1. Fork it
