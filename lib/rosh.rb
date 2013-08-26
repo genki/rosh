@@ -56,7 +56,7 @@ private
 
   def resolv
     uri = URI("//#{@host}")
-    uri.host = Resolv.getaddress uri.host
+    uri.host = Resolv::DNS.new.getaddress(uri.host).to_s
     uri.to_s[2..-1]
   rescue Exception
     @host
