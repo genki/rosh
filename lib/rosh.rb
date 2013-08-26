@@ -6,6 +6,7 @@ require File.join(File.dirname(__FILE__), %w[rosh version])
 
 class Rosh
   def initialize(*args)
+    @interval = 3
     @ssh_opts = []
     alive_interval = 5
     @escape = '^t'
@@ -13,6 +14,7 @@ class Rosh
       opt.banner = 'Usage: rosh [options] hostname [session-name]'
       opt.on('-a alive-interval'){|v| alive_interval = v.to_i}
       opt.on('-e escape'){|v| @escape = v}
+      opt.on('-I interval'){|v| @interval = v.to_f}
     end.parse! args
     @host, @name = *args, :default
     abort 'hostname is required' if @host == :default
@@ -43,7 +45,7 @@ class Rosh
       end
       @first_try = false
     else
-      sleep [@last_try - Time.now + 1, 0].max if @last_try
+      sleep [@last_try - Time.now + @interval, 0].max if @last_try
       puts "reconnecting..."
       @last_try = Time.now
     end
