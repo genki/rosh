@@ -24,6 +24,7 @@ Or install it yourself as:
     -a alive-interval   Set ssh option ServerAliveInterval. Default: 5
     -e escape           Set the escape charactor of the outer screen session.
                         Default: "^t"
+    -I interval         Reconnection interval.
 
 To detach the outer screen session,
 
