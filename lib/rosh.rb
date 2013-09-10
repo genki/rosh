@@ -24,6 +24,8 @@ class Rosh
     # check ~/.ssh/config to resolve alias name
     config = Net::SSH::Config.for(@host)
     @host = config[:host_name] if config[:host_name]
+    @ssh_opts << "-l #{config[:user]}" if config[:user]
+    @ssh_opts << "-p #{config[:port]}" if config[:port]
     @first_try = true
   end
 
@@ -52,7 +54,9 @@ class Rosh
   end
 
 private
-  def sh(a, r=nil) system "ssh #{resolv} 'screen -S #{@name} #{a}' #{r}" end
+  def sh(a, r=nil)
+    system "ssh #{resolv} #{@ssh_opts*' '} 'screen -S #{@name} #{a}' #{r}"
+  end
 
   def resolv
     uri = URI("//#{@host}")
