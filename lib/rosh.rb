@@ -26,6 +26,9 @@ class Rosh
     @host = config[:host_name] if config[:host_name]
     @ssh_opts << "-l #{config[:user]}" if config[:user]
     @ssh_opts << "-p #{config[:port]}" if config[:port]
+    if keys = config[:keys]
+      keys.each{|k| @ssh_opts << "-i #{k}"}
+    end
     @first_try = true
   end
 
