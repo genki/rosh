@@ -16,6 +16,7 @@ class Rosh
       opt.on('-e escape'){|v| @escape = v}
       opt.on('-I interval'){|v| @interval = v.to_f}
       opt.on('-V'){|v| @verbose = true}
+      opt.on('-S'){|v| @screen = true}
     end.parse! args
     @host, @name = *args, :default
     abort 'hostname is required' if @host == :default
@@ -45,8 +46,13 @@ class Rosh
   end
 
   def connect
-    cmd = ["ssh", *@ssh_opts, resolv,
-      '-t', "'screen -rx #{@name}'", '2>/dev/null']*' '
+    cmd = if @screen
+      ["ssh", *@ssh_opts, resolv,
+        '-t', "'screen -rx #{@name}'", '2>/dev/null']*' '
+    else
+      ["ssh", *@ssh_opts, resolv,
+        '-t', "'tmux attach -t #{@name}'", '2>/dev/null']*' '
+    end
     if @verbose
       puts "connecting to #{@host}..."
       puts cmd
@@ -56,10 +62,21 @@ class Rosh
 
   def reconnect
     if @first_try
-      if !sh('-p 0 -X echo ok', '2>&1 >/dev/null')
-        print "creating new screen session #{@name}... "
-        if sh %{-c /dev/null -e "#{@escape*2}" -dm} and
-          sh '-p 0 -X eval "stuff STY=\\040screen\\015"'
+      session_exists = if @screen
+        sh('-p 0 -X echo ok', '2>&1 >/dev/null')
+      else
+        sh_has_session?
+      end
+      unless session_exists
+        type = @screen ? 'screen' : 'tmux'
+        print "creating new #{type} session #{@name}..."
+        new_session = if @screen
+          sh %{-c /dev/null -e "#{@escape*2}" -dm} and
+            sh '-p 0 -X eval "stuff STY=\\040screen\\015"'
+        else
+          sh_new_session?
+        end
+        if new_session
           puts "done."
         else
           puts "failed."
@@ -79,6 +96,30 @@ private
     if @verbose
       puts cmd
     end
+    system cmd
+  end
+
+  def sh_has_session?
+    # tmux has-session -t <session_name>
+    cmd = [
+      "ssh",
+      *@ssh_opts,
+      resolv,
+      "'tmux has-session -t #{@name} 2>/dev/null'"
+    ]*' '
+    puts cmd if @verbose
+    system cmd
+  end
+
+  def sh_new_session?
+    # tmux new-session -s <session_name> -d
+    cmd = [
+      "ssh",
+      *@ssh_opts,
+      resolv,
+      "'tmux new-session -s #{@name} -d'"
+    ]*' '
+    puts cmd if @verbose
     system cmd
   end
 
