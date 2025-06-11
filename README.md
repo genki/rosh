@@ -1,7 +1,7 @@
 # Rosh
 
 Rosh is roaming shell.
-It can automatically reconnect to the host with the remote GNU screen session.
+It can automatically reconnect to the host with the remote tmux or GNU screen session.
 
 ## Installation
 
