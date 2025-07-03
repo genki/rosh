@@ -24,9 +24,16 @@ class Rosh
     @ssh_opts << "-o ServerAliveCountMax=1"
 
     # check ~/.ssh/config to resolve alias name
+    alias_name = @host
     config = Net::SSH::Config.for(@host)
     if @verbose
       puts "ssh-config: #{config}"
+    end
+    local_forwards(alias_name).each do |f|
+      @ssh_opts << "-L #{f}"
+    end
+    remote_forwards(alias_name).each do |f|
+      @ssh_opts << "-R #{f}"
     end
     @host = config[:host_name] if config[:host_name]
     @ssh_opts << "-l #{config[:user]}" if config[:user]
@@ -34,13 +41,6 @@ class Rosh
     @ssh_opts << "-J #{config[:proxy].jump_proxies}" if config[:proxy]
     if keys = config[:keys]
       keys.each{|k| @ssh_opts << "-i #{k}"}
-    end
-
-    local_forwards(config[:host] || @host).each do |f|
-      @ssh_opts << "-L #{f}"
-    end
-    remote_forwards(config[:host] || @host).each do |f|
-      @ssh_opts << "-R #{f}"
     end
     if @verbose
       puts "host: #{@host}"
