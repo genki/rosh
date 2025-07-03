@@ -35,6 +35,7 @@ class Rosh
     if keys = config[:keys]
       keys.each{|k| @ssh_opts << "-i #{k}"}
     end
+
     local_forwards(config[:host] || @host).each do |f|
       @ssh_opts << "-L #{f}"
     end
@@ -129,20 +130,13 @@ private
     system cmd
   end
 
-  def resolv
-    uri = URI("//#{@host}")
-    uri.host = Resolv::DNS.new.getaddress(uri.host).to_s
-    uri.to_s[2..-1]
-  rescue Exception
-    @host
-  end
   def local_forwards(host)
     file = File.expand_path("~/.ssh/config")
     return [] unless File.readable?(file)
     forwards = []
     current = false
     File.foreach(file) do |line|
-      line = line.sub(/#.*/, "").strip
+      line = line.sub(/#.*/, '').strip
       next if line.empty?
       if line =~ /^Host\s+(.*)/i
         patterns = $1.split(/\s+/)
@@ -152,13 +146,15 @@ private
       end
     end
     forwards
+  end
+
   def remote_forwards(host)
     file = File.expand_path("~/.ssh/config")
     return [] unless File.readable?(file)
     forwards = []
     current = false
     File.foreach(file) do |line|
-      line = line.sub(/#.*/, "").strip
+      line = line.sub(/#.*/, '').strip
       next if line.empty?
       if line =~ /^Host\s+(.*)/i
         patterns = $1.split(/\s+/)
@@ -168,5 +164,13 @@ private
       end
     end
     forwards
+  end
+
+  def resolv
+    uri = URI("//#{@host}")
+    uri.host = Resolv::DNS.new.getaddress(uri.host).to_s
+    uri.to_s[2..-1]
+  rescue Exception
+    @host
   end
 end
