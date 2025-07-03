@@ -38,6 +38,9 @@ class Rosh
     local_forwards(config[:host] || @host).each do |f|
       @ssh_opts << "-L #{f}"
     end
+    remote_forwards(config[:host] || @host).each do |f|
+      @ssh_opts << "-R #{f}"
+    end
     if @verbose
       puts "host: #{@host}"
       puts "name: #{@name}"
@@ -149,6 +152,21 @@ private
       end
     end
     forwards
+  def remote_forwards(host)
+    file = File.expand_path("~/.ssh/config")
+    return [] unless File.readable?(file)
+    forwards = []
+    current = false
+    File.foreach(file) do |line|
+      line = line.sub(/#.*/, "").strip
+      next if line.empty?
+      if line =~ /^Host\s+(.*)/i
+        patterns = $1.split(/\s+/)
+        current = patterns.any? { |p| host =~ Net::SSH::Config.send(:pattern2regex, p) }
+      elsif current && line =~ /^RemoteForward\s+(.*)/i
+        forwards << $1.strip
+      end
+    end
+    forwards
   end
-
 end

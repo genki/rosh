@@ -27,7 +27,7 @@ Or install it yourself as:
     -I interval         Reconnection interval.
     -S                  Use GNU screen instead of tmux
 
-If ~/.ssh/config contains LocalForward for the host, the same
+If ~/.ssh/config contains LocalForward or RemoteForward for the host, the same
 forwarding options are passed to `ssh` automatically.
 To detach the outer screen session,
 
