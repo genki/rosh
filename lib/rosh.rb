@@ -143,7 +143,7 @@ private
       next if line.empty?
       if line =~ /^Host\s+(.*)/i
         patterns = $1.split(/\s+/)
-        current = patterns.any? { |p| host =~ Net::SSH::Config.pattern2regex(p) }
+        current = patterns.any? { |p| host =~ Net::SSH::Config.send(:pattern2regex, p) }
       elsif current && line =~ /^LocalForward\s+(.*)/i
         forwards << $1.strip
       end
