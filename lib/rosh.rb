@@ -142,7 +142,7 @@ private
         patterns = $1.split(/\s+/)
         current = patterns.any? { |p| host =~ Net::SSH::Config.send(:pattern2regex, p) }
       elsif current && line =~ /^LocalForward\s+(.*)/i
-                        forwards << $1.strip.gsub(/s+/, ':')
+                        forwards << $1.strip.gsub(/\s+/, ':')
       end
     end
     forwards
@@ -160,7 +160,7 @@ private
         patterns = $1.split(/\s+/)
         current = patterns.any? { |p| host =~ Net::SSH::Config.send(:pattern2regex, p) }
       elsif current && line =~ /^RemoteForward\s+(.*)/i
-                        forwards << $1.strip.gsub(/s+/, ':')
+                        forwards << $1.strip.gsub(/\s+/, ':')
       end
     end
     forwards
