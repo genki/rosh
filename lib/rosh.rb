@@ -227,23 +227,24 @@ private
 
   def sh_has_session?
     # tmux has-session -t <session_name>
-    cmd = [
-      "ssh",
-      *@ssh_opts,
-      resolv,
-      "'tmux has-session -t #{@name} 2>/dev/null'"
-    ]*' '
-    puts cmd if @verbose
-    system cmd
+    ssh_tmux("tmux has-session -t #{@name} 2>/dev/null")
   end
 
   def sh_new_session?
     # tmux new-session -s <session_name> -d
+    create_with_override = "tmux new-session -s #{@name} -d \\; set-option -t #{@name} destroy-unattached off"
+    return true if ssh_tmux(create_with_override)
+
+    puts "retrying tmux new-session without destroy-unattached override" if @verbose
+    ssh_tmux("tmux new-session -s #{@name} -d")
+  end
+
+  def ssh_tmux(command)
     cmd = [
       "ssh",
       *@ssh_opts,
       resolv,
-      "'tmux new-session -s #{@name} -d'"
+      "'#{command}'"
     ]*' '
     puts cmd if @verbose
     system cmd

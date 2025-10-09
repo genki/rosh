@@ -24,14 +24,24 @@ class RoshForwardingTest < Minitest::Test
   end
 
   def test_ssh_opts_include_local_forwarding_from_ssh_config
-    rosh = Rosh.new('grav')
+    klass = Class.new(Rosh) do
+      def local_forward_available?(_spec)
+        true
+      end
+    end
+    rosh = klass.new('grav')
     ssh_opts = rosh.instance_variable_get(:@ssh_opts)
 
     assert_includes ssh_opts, '-L 127.0.0.1:3131:localhost:3131'
   end
 
   def test_ssh_opts_include_remote_forwarding_from_ssh_config
-    rosh = Rosh.new('grav')
+    klass = Class.new(Rosh) do
+      def local_forward_available?(_spec)
+        true
+      end
+    end
+    rosh = klass.new('grav')
     ssh_opts = rosh.instance_variable_get(:@ssh_opts)
 
     assert_includes ssh_opts, '-R 8082:localhost:8082'
@@ -83,5 +93,29 @@ class RoshForwardingTest < Minitest::Test
 
     out_again, _ = capture_io { rosh.send(:report_oom_if_needed, 'ssh grav') }
     assert_equal '', out_again
+  end
+
+  def test_tmux_new_session_disables_destroy_unattached
+    rosh = Rosh.new('grav', 'grav')
+    commands = []
+    rosh.stub(:system, ->(cmd) { commands << cmd; true }) do
+      assert rosh.send(:sh_new_session?)
+    end
+
+    assert_equal 1, commands.size
+    assert_includes commands.first, 'set-option -t grav destroy-unattached off'
+  end
+
+  def test_tmux_new_session_fallback_without_override
+    rosh = Rosh.new('grav', 'grav')
+    commands = []
+    results = [false, true].each
+
+    rosh.stub(:system, ->(cmd) { commands << cmd; results.next rescue true }) do
+      assert rosh.send(:sh_new_session?)
+    end
+
+    assert_includes commands.first, 'set-option -t grav destroy-unattached off'
+    refute_includes commands.last, 'set-option -t grav destroy-unattached off'
   end
 end
