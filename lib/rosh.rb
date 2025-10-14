@@ -11,6 +11,7 @@ class Rosh
     @ssh_opts = []
     alive_interval = 5
     @escape = '^t'
+    @tmux_socket_name = nil
     OptionParser.new("test").tap do |opt|
       opt.banner = 'Usage: rosh [options] hostname [session-name]'
       opt.on('-a alive-interval'){|v| alive_interval = v.to_i}
@@ -18,6 +19,7 @@ class Rosh
       opt.on('-I interval'){|v| @interval = v.to_f}
       opt.on('-V'){|v| @verbose = true}
       opt.on('-S'){|v| @screen = true}
+      opt.on('-L socket-name'){|v| @tmux_socket_name = v}
     end.parse! args
     @host, @name = *args, :default
     abort 'hostname is required' if @host == :default
@@ -62,8 +64,9 @@ class Rosh
       ["ssh", *@ssh_opts, resolv,
         '-t', "'screen -rx #{@name}'", '2>/dev/null']*' '
     else
+      remote_cmd = single_quote(tmux_attach_command)
       ["ssh", *@ssh_opts, resolv,
-        '-t', "'tmux attach -t #{@name}'", '2>/dev/null']*' '
+        '-t', remote_cmd, '2>/dev/null']*' '
     end
     if @verbose
       puts "connecting to #{@host}..."
@@ -227,24 +230,25 @@ private
 
   def sh_has_session?
     # tmux has-session -t <session_name>
-    ssh_tmux("tmux has-session -t #{@name} 2>/dev/null")
+    ssh_tmux("#{tmux_prefix} has-session -t #{tmux_session_name} 2>/dev/null")
   end
 
   def sh_new_session?
     # tmux new-session -s <session_name> -d
-    create_with_override = "tmux new-session -s #{@name} -d \\; set-option -t #{@name} destroy-unattached off"
+    create_with_override = "#{tmux_prefix} new-session -s #{tmux_session_name} -d \\; set-option -t #{tmux_session_name} destroy-unattached off"
     return true if ssh_tmux(create_with_override)
 
     puts "retrying tmux new-session without destroy-unattached override" if @verbose
-    ssh_tmux("tmux new-session -s #{@name} -d")
+    ssh_tmux("#{tmux_prefix} new-session -s #{tmux_session_name} -d")
   end
 
   def ssh_tmux(command)
+    remote_command = single_quote(command.to_s)
     cmd = [
       "ssh",
       *@ssh_opts,
       resolv,
-      "'#{command}'"
+      remote_command
     ]*' '
     puts cmd if @verbose
     system cmd
@@ -292,5 +296,28 @@ private
     uri.to_s[2..-1]
   rescue Exception
     @host
+  end
+
+  def tmux_attach_command
+    "#{tmux_prefix} attach -t #{tmux_session_name}"
+  end
+
+  def tmux_prefix
+    return 'tmux' unless @tmux_socket_name
+    "tmux -L #{format_remote_arg(@tmux_socket_name)}"
+  end
+
+  def tmux_session_name
+    format_remote_arg(@name)
+  end
+
+  def format_remote_arg(value)
+    str = value.to_s
+    return str if str.match?(%r{\A[[:alnum:]@%+=:,./_-]+\z})
+    %("#{str.gsub(/(["\\$`])/, '\\\\\1')}")
+  end
+
+  def single_quote(str)
+    "'" + str.to_s.gsub("'", %q('\'') ) + "'"
   end
 end

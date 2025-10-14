@@ -118,4 +118,26 @@ class RoshForwardingTest < Minitest::Test
     assert_includes commands.first, 'set-option -t grav destroy-unattached off'
     refute_includes commands.last, 'set-option -t grav destroy-unattached off'
   end
+
+  def test_tmux_commands_include_socket_name_when_specified
+    socket_name = 'work'
+    rosh = Rosh.new('-L', socket_name, 'grav')
+    rosh.instance_variable_set(:@name, 'grav')
+
+    assert_includes rosh.send(:tmux_attach_command), "-L #{socket_name}"
+
+    commands = []
+    rosh.stub(:system, ->(cmd) { commands << cmd; true }) do
+      rosh.send(:sh_has_session?)
+    end
+
+    assert_includes commands.first, "-L #{socket_name}"
+  end
+
+  def test_tmux_default_socket_used_when_not_specified
+    rosh = Rosh.new('grav')
+    command = rosh.send(:tmux_attach_command)
+
+    refute_includes command, '-L'
+  end
 end

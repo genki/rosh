@@ -26,6 +26,7 @@ Or install it yourself as:
                         Default: "^t"
     -I interval         Reconnection interval.
     -S                  Use GNU screen instead of tmux
+    -L socket-name      Specify tmux socket name (tmux -L socket-name)
 
 If ~/.ssh/config contains LocalForward or RemoteForward for the host, the same
 forwarding options are passed to `ssh` automatically.
