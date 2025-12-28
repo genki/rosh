@@ -32,8 +32,6 @@ class Rosh
     if @verbose
       puts "ssh-config: #{config}"
     end
-    @forward_opts = []
-    @forwarding_disabled = false
     @oom_reported = false
     @last_exit_status = nil
     local_forwards(alias_name).each do |f|
@@ -120,26 +118,12 @@ private
   end
 
   def add_forward_option(kind, spec)
-    return if forwarding_disabled?
     if kind == :local && !local_forward_available?(spec)
       puts "skip forwarding: #{spec} is already in use"
-      disable_forwarding!
       return
     end
     opt = kind == :local ? "-L #{spec}" : "-R #{spec}"
     @ssh_opts << opt
-    @forward_opts << opt
-  end
-
-  def disable_forwarding!
-    return if @forwarding_disabled
-    @forwarding_disabled = true
-    @forward_opts.each { |opt| @ssh_opts.delete(opt) }
-    @forward_opts.clear
-  end
-
-  def forwarding_disabled?
-    @forwarding_disabled
   end
 
   def local_forward_available?(spec)

@@ -57,7 +57,7 @@ class RoshForwardingTest < Minitest::Test
     ssh_opts = rosh.instance_variable_get(:@ssh_opts)
 
     refute_includes ssh_opts, '-L 127.0.0.1:3131:localhost:3131'
-    refute_includes ssh_opts, '-R 8082:localhost:8082'
+    assert_includes ssh_opts, '-R 8082:localhost:8082'
   end
 
   def test_verbose_logs_when_session_is_missing
