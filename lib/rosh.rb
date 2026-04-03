@@ -9,6 +9,9 @@ class Rosh
   def initialize(*args)
     @interval = 3
     @ssh_opts = []
+    @base_ssh_opts = []
+    @local_forward_specs = []
+    @remote_forward_specs = []
     alive_interval = 5
     @escape = '^t'
     @tmux_socket_name = nil
@@ -23,8 +26,8 @@ class Rosh
     end.parse! args
     @host, @name = *args, :default
     abort 'hostname is required' if @host == :default
-    @ssh_opts << "-o ServerAliveInterval=#{alive_interval}"
-    @ssh_opts << "-o ServerAliveCountMax=1"
+    @base_ssh_opts << "-o ServerAliveInterval=#{alive_interval}"
+    @base_ssh_opts << "-o ServerAliveCountMax=1"
 
     # check ~/.ssh/config to resolve alias name
     alias_name = @host
@@ -34,19 +37,16 @@ class Rosh
     end
     @oom_reported = false
     @last_exit_status = nil
-    local_forwards(alias_name).each do |f|
-      add_forward_option(:local, f)
-    end
-    remote_forwards(alias_name).each do |f|
-      add_forward_option(:remote, f)
-    end
+    @local_forward_specs = local_forwards(alias_name)
+    @remote_forward_specs = remote_forwards(alias_name)
     @host = config[:host_name] if config[:host_name]
-    @ssh_opts << "-l #{config[:user]}" if config[:user]
-    @ssh_opts << "-p #{config[:port]}" if config[:port]
-    @ssh_opts << "-J #{config[:proxy].jump_proxies}" if config[:proxy]
+    @base_ssh_opts << "-l #{config[:user]}" if config[:user]
+    @base_ssh_opts << "-p #{config[:port]}" if config[:port]
+    @base_ssh_opts << "-J #{config[:proxy].jump_proxies}" if config[:proxy]
     if keys = config[:keys]
-      keys.each{|k| @ssh_opts << "-i #{k}"}
+      keys.each{|k| @base_ssh_opts << "-i #{k}"}
     end
+    refresh_ssh_opts!
     if @verbose
       puts "host: #{@host}"
       puts "name: #{@name}"
@@ -58,25 +58,20 @@ class Rosh
   end
 
   def connect
-    cmd = if @screen
-      ["ssh", *@ssh_opts, resolv,
-        '-t', "'screen -rx #{@name}'", '2>/dev/null']*' '
-    else
-      remote_cmd = single_quote(tmux_attach_command)
-      ["ssh", *@ssh_opts, resolv,
-        '-t', remote_cmd, '2>/dev/null']*' '
-    end
     if @verbose
       puts "connecting to #{@host}..."
-      puts cmd
     end
+    cmd = nil
     begin
       reconnect
+      cmd = attach_command
+      puts cmd if @verbose
     end until execute_attach(cmd)
     report_session_end(cmd)
   end
 
   def reconnect
+    refresh_ssh_opts!
     if @first_try
       session_exists = if @screen
         sh('-p 0 -X echo ok', '2>&1 >/dev/null')
@@ -107,6 +102,16 @@ class Rosh
   end
 
 private
+  def refresh_ssh_opts!
+    @ssh_opts = @base_ssh_opts.dup
+    @local_forward_specs.each do |spec|
+      add_forward_option(:local, spec)
+    end
+    @remote_forward_specs.each do |spec|
+      add_forward_option(:remote, spec)
+    end
+  end
+
   def execute_attach(cmd)
     result = system cmd
     @last_exit_status = $?
@@ -236,6 +241,17 @@ private
     ]*' '
     puts cmd if @verbose
     system cmd
+  end
+
+  def attach_command
+    if @screen
+      ["ssh", *@ssh_opts, resolv,
+        '-t', "'screen -rx #{@name}'", '2>/dev/null']*' '
+    else
+      remote_cmd = single_quote(tmux_attach_command)
+      ["ssh", *@ssh_opts, resolv,
+        '-t', remote_cmd, '2>/dev/null']*' '
+    end
   end
 
   def local_forwards(host)

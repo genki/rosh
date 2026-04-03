@@ -5,6 +5,22 @@ require 'fileutils'
 require_relative '../lib/rosh'
 
 class RoshForwardingTest < Minitest::Test
+  def with_stub(obj, method_name, callable)
+    singleton = class << obj; self; end
+    original_defined = obj.respond_to?(method_name, true)
+    original_name = :"__orig_#{method_name}_for_test"
+
+    singleton.alias_method(original_name, method_name) if original_defined
+    singleton.define_method(method_name, &callable)
+    yield
+  ensure
+    singleton.remove_method(method_name) rescue nil
+    if original_defined
+      singleton.alias_method(method_name, original_name)
+      singleton.remove_method(original_name) rescue nil
+    end
+  end
+
   def setup
     @original_home = ENV['HOME']
     @tmp_home = Dir.mktmpdir('rosh-test-home-')
@@ -60,6 +76,55 @@ class RoshForwardingTest < Minitest::Test
     assert_includes ssh_opts, '-R 8082:localhost:8082'
   end
 
+  def test_reconnect_retries_local_forwarding_when_port_becomes_available
+    klass = Class.new(Rosh) do
+      def initialize(*args)
+        @availability_checks = [false, true]
+        super
+      end
+
+      def local_forward_available?(_spec)
+        @availability_checks.empty? ? true : @availability_checks.shift
+      end
+    end
+
+    rosh = klass.new('grav')
+    refute_includes rosh.instance_variable_get(:@ssh_opts), '-L 127.0.0.1:3131:localhost:3131'
+
+    rosh.instance_variable_set(:@first_try, false)
+    capture_io { rosh.reconnect }
+
+    assert_includes rosh.instance_variable_get(:@ssh_opts), '-L 127.0.0.1:3131:localhost:3131'
+  end
+
+  def test_connect_rebuilds_attach_command_after_reconnect_refreshes_forwarding
+    klass = Class.new(Rosh) do
+      def initialize(*args)
+        @availability_checks = [false, false, true]
+        super
+      end
+
+      def local_forward_available?(_spec)
+        @availability_checks.empty? ? true : @availability_checks.shift
+      end
+    end
+
+    rosh = klass.new('grav')
+    rosh.instance_variable_set(:@first_try, false)
+
+    commands = []
+    results = [false, true]
+
+    with_stub(rosh, :execute_attach, ->(cmd) { commands << cmd; results.shift }) do
+      with_stub(rosh, :report_session_end, ->(_cmd) { nil }) do
+        capture_io { rosh.connect }
+      end
+    end
+
+    refute_includes commands.first, '-L 127.0.0.1:3131:localhost:3131'
+    assert_includes commands.last, '-L 127.0.0.1:3131:localhost:3131'
+  end
+
   def test_verbose_logs_when_session_is_missing
     rosh = Rosh.new('grav')
     rosh.instance_variable_set(:@verbose, true)
@@ -69,7 +134,7 @@ class RoshForwardingTest < Minitest::Test
     rosh.instance_variable_set(:@last_exit_status, status)
 
     out, _ = capture_io do
-      rosh.stub(:sh_has_session?, false) do
+      with_stub(rosh, :sh_has_session?, -> { false }) do
         rosh.send(:log_session_end, 'ssh grav')
       end
     end
@@ -98,7 +163,7 @@ class RoshForwardingTest < Minitest::Test
   def test_tmux_new_session_disables_destroy_unattached
     rosh = Rosh.new('grav', 'grav')
     commands = []
-    rosh.stub(:system, ->(cmd) { commands << cmd; true }) do
+    with_stub(rosh, :system, ->(cmd) { commands << cmd; true }) do
       assert rosh.send(:sh_new_session?)
     end
 
@@ -111,7 +176,7 @@ class RoshForwardingTest < Minitest::Test
     commands = []
     results = [false, true].each
 
-    rosh.stub(:system, ->(cmd) { commands << cmd; results.next rescue true }) do
+    with_stub(rosh, :system, ->(cmd) { commands << cmd; results.next rescue true }) do
       assert rosh.send(:sh_new_session?)
     end
 
@@ -127,7 +192,7 @@ class RoshForwardingTest < Minitest::Test
     assert_includes rosh.send(:tmux_attach_command), "-L #{socket_name}"
 
     commands = []
-    rosh.stub(:system, ->(cmd) { commands << cmd; true }) do
+    with_stub(rosh, :system, ->(cmd) { commands << cmd; true }) do
       rosh.send(:sh_has_session?)
     end
 
