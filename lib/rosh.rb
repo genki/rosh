@@ -2,6 +2,7 @@ require 'uri'
 require 'resolv'
 require 'net/ssh/config'
 require 'optparse'
+require 'shellwords'
 require 'socket'
 require File.join(File.dirname(__FILE__), %w[rosh version])
 
@@ -42,7 +43,9 @@ class Rosh
     @host = config[:host_name] if config[:host_name]
     @base_ssh_opts << "-l #{config[:user]}" if config[:user]
     @base_ssh_opts << "-p #{config[:port]}" if config[:port]
-    @base_ssh_opts << "-J #{config[:proxy].jump_proxies}" if config[:proxy]
+    if proxy_option = ssh_proxy_option(config[:proxy])
+      @base_ssh_opts << proxy_option
+    end
     if keys = config[:keys]
       keys.each{|k| @base_ssh_opts << "-i #{k}"}
     end
@@ -102,6 +105,16 @@ class Rosh
   end
 
 private
+  def ssh_proxy_option(proxy)
+    return nil unless proxy
+
+    if proxy.respond_to?(:jump_proxies)
+      "-J #{proxy.jump_proxies}"
+    elsif proxy.respond_to?(:command_line_template)
+      "-o ProxyCommand=#{Shellwords.escape(proxy.command_line_template)}"
+    end
+  end
+
   def refresh_ssh_opts!
     @ssh_opts = @base_ssh_opts.dup
     @local_forward_specs.each do |spec|

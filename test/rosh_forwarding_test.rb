@@ -1,6 +1,7 @@
 require 'minitest/autorun'
 require 'tmpdir'
 require 'fileutils'
+require 'shellwords'
 
 require_relative '../lib/rosh'
 
@@ -30,6 +31,14 @@ class RoshForwardingTest < Minitest::Test
       Host grav
         LocalForward 127.0.0.1 3131 localhost 3131
         RemoteForward 8082 localhost 8082
+
+      Host grav-jump
+        HostName grav.example.com
+        ProxyJump bastion.example.com
+
+      Host grav-command
+        HostName grav.example.com
+        ProxyCommand ssh bastion.example.com -W %h:%p
     CONFIG
     ENV['HOME'] = @tmp_home
   end
@@ -61,6 +70,21 @@ class RoshForwardingTest < Minitest::Test
     ssh_opts = rosh.instance_variable_get(:@ssh_opts)
 
     assert_includes ssh_opts, '-R 8082:localhost:8082'
+  end
+
+  def test_ssh_opts_include_proxy_jump_from_ssh_config
+    rosh = Rosh.new('grav-jump')
+    ssh_opts = rosh.instance_variable_get(:@ssh_opts)
+
+    assert_includes ssh_opts, '-J bastion.example.com'
+  end
+
+  def test_ssh_opts_include_proxy_command_from_ssh_config
+    rosh = Rosh.new('grav-command')
+    ssh_opts = rosh.instance_variable_get(:@ssh_opts)
+
+    expected = "-o ProxyCommand=#{Shellwords.escape('ssh bastion.example.com -W %h:%p')}"
+    assert_includes ssh_opts, expected
   end
 
   def test_forwarding_is_skipped_when_local_port_is_in_use

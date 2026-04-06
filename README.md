@@ -31,6 +31,9 @@ Or install it yourself as:
 If ~/.ssh/config contains LocalForward or RemoteForward for the host, the same
 forwarding options are passed to `ssh` automatically.
 
+If the host uses `ProxyJump` or `ProxyCommand`, rosh also carries that proxy
+setting over to the spawned `ssh` command.
+
 If a `LocalForward` is skipped because the local port is actually in use,
 rosh retries that forwarding on later reconnect attempts instead of dropping it
 for the rest of the process lifetime.
